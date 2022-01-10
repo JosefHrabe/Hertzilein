@@ -65,7 +65,7 @@ def plot():
 
     m_x , m_y = makeMinuteData( sumData['t'] , sumData['avg'])
     plt.plot( m_x , m_y ,
-              label='Minute Average', marker='', linestyle='-',
+              label='Average (1min)', marker='', linestyle='-',
               color='#000000' , alpha = 0.9 , linewidth=0.7 , zorder=3)
 
 
@@ -79,14 +79,14 @@ def plot():
         sumData['to'].append( nb.getDateObject(sumData['t'][i]) )
 
     plt.plot( sumData['to'] , sumData['avg'] ,
-              label='Mittelwert {0:.3f}Hz'.format(mean), marker='', linestyle='-',
+              label='Average (1s)', marker='', linestyle='-',
               color='#008000' , alpha = 0.4 , linewidth=0.7 , zorder=2)
 
 
-    plt.plot(mean_x, mean_y, label='Mittelwert {0:.3f}Hz'.format(mean), marker='', linestyle=':',
+    plt.plot(mean_x, mean_y, label='Measured Mean {0:.3f}Hz'.format(mean), marker='', linestyle=':',
              color='#008ff5' , linewidth=1 , zorder=2)
 
-    plt.plot(mean_x, mean_50, label='Mittelwert {0:.3f}Hz'.format(50), marker='', linestyle=':',
+    plt.plot(mean_x, mean_50, label='Setpoint {0:.3f}Hz'.format(50), marker='', linestyle=':',
              color='#ff0000' , linewidth=1 , zorder=2)
 
     if cfg_showLegend:
@@ -96,7 +96,7 @@ def plot():
         mean_base = 50.0
         dMin = [ mean_base-dev,mean_base-dev ]
         dMax = [ mean_base+dev,mean_base+dev ]
-        plt.plot(mean_x, dMin, marker='', linestyle=':', linewidth=1 , color='#00aa00' , label='Normalbereich')
+        plt.plot(mean_x, dMin, marker='', linestyle=':', linewidth=1 , color='#00aa00' , label='Regular Area')
         plt.plot(mean_x, dMax, marker='', linestyle=':', linewidth=1 , color='#00aa00')
         plt.fill_between( mean_x , dMin , dMax , color='#00a00040')
 
@@ -104,51 +104,51 @@ def plot():
         dev = 0.8
         dMin = [ mean_base-dev,mean_base-dev ]
         dMax = [ mean_base+dev,mean_base+dev ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-.', linewidth=1 , color='#00aa00' , label='Kurzfr. Störungen\nohne Regulierung')
+        plt.plot(mean_x, dMin, marker='', linestyle='-.', linewidth=1 , color='#00aa00' , label='Short-term disruptions\nw/o regulation')
         plt.plot(mean_x, dMax, marker='', linestyle='-.', linewidth=1 , color='#00aa00')
         plt.fill_between( mean_x , dMin , dMax , color='#00a00020')
 
         # prim reg.
         dMin = [ mean_base-0.2,mean_base-0.2 ]
         dMax = [ mean_base-0.8,mean_base-0.8 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#606060' , alpha=0.5, label='Aktivierung Leistungsreserve\nt<10')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#606060' , alpha=0.5, label='Activation 1st power reserve\nt<10s')
         plt.fill_between( mean_x , dMin , dMax , color='#ffff00' , alpha=0.1)
 
         # Abwurf Speicherpumpen
         dMin = [ mean_base-0.8,mean_base-0.8 ]
         dMax = [ mean_base-1.0,mean_base-1.0 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#606060' , alpha=0.6, label='Abwurf Speicherpumpen\nunverzögert')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#606060' , alpha=0.6, label='Dump storage pumps\nwithout delay')
         plt.fill_between( mean_x , dMin , dMax , color='#ffff00' , alpha=0.2)
 
         # Lastabwurf Stufe 1
         dMin = [ mean_base-1.0,mean_base-1.0 ]
         dMax = [ mean_base-1.2,mean_base-1.2 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ffff00' , alpha=0.7, label='Lastabwurf Stufe 1\nca. 12.5%')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ffff00' , alpha=0.7, label='Load shedding Level 1\n~12.5% load')
         plt.fill_between( mean_x , dMin , dMax , color='#ffff00' , alpha=0.3)
 
         # Lastabwurf Stufe 2
         dMin = [ mean_base-1.2,mean_base-1.2 ]
         dMax = [ mean_base-1.4,mean_base-1.4 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff8000' , alpha=0.7, label='Lastabwurf Stufe 2\nca. 25.0%')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff8000' , alpha=0.7, label='Load shedding Level 2\n~25.0% load')
         plt.fill_between( mean_x , dMin , dMax , color='#ff8000' , alpha=0.4)
 
         # Lastabwurf Stufe 3
         dMin = [ mean_base-1.4,mean_base-1.4 ]
         dMax = [ mean_base-1.6,mean_base-1.6 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff4000' , alpha=0.7, label='Lastabwurf Stufe 3\nca. 37.5%')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff4000' , alpha=0.7, label='Load shedding Level 3\n~37.5% load')
         plt.fill_between( mean_x , dMin , dMax , color='#ff4000' , alpha=0.5)
 
         # Lastabwurf Stufe 4
         dMin = [ mean_base-1.6,mean_base-1.6 ]
         dMax = [ mean_base-2.5,mean_base-2.5 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff0000' , alpha=0.7, label='Lastabwurf Stufe 4\nmind. 50%')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff0000' , alpha=0.7, label='Load shedding Level 4\n50% load minimum')
         plt.fill_between( mean_x , dMin , dMax , color='#ff0000' , alpha=0.6)
 
 
         # Blackout
         dMin = [ mean_base-2.5,mean_base-2.5 ]
         dMax = [ 0,0 ]
-        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#000000' , alpha=1.0, label='Trennung Kraftwerke\nvon Netz')
+        plt.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#000000' , alpha=1.0, label='Separation of\npower plants')
         plt.fill_between( mean_x , dMin , dMax , color='#000000' , alpha=0.6)
 
     plt.grid()
@@ -169,7 +169,7 @@ def plot():
     plt.xticks( fontsize=5)
     plt.yticks( fontsize=5)
 
-    title = 'Netzfrequenz'
+    title = 'Power frequency'
 
     plt.title( title , size=9, y=1.09)
 
