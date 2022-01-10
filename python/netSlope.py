@@ -1,30 +1,20 @@
-#from events.EventDispatcherClass import Event
-#import datetime
-import dataclasses
-import multiprocessing
 import os
-import random
-import time, sys
+import time
 import matplotlib.pylab as plt
 import argparse
-
 from pyfirmata import Arduino, util
 import pyfirmata
 import netBase as nb
-import scipy as sy
-import scipy.fftpack as syfp
-from math import sqrt
 import threading
 import signal
 import matplotlib.pyplot as plt
-import sys, psutil
 from copy import deepcopy
 
 runState=True
 
 class Sampler:
 
-    def __init__(self, port, maxSample=4):
+    def __init__(self, port ):
         self.valid=False
         self.logTime=time.time()
         print('Init Sampler : ... ' , end='\r')
@@ -32,14 +22,14 @@ class Sampler:
             self.board = Arduino(port)
             self.__logTime( 'BoardInit')
         except Exception as e:
-            print(e)
+            nb.logException(e , 'Failed to init Sampler port:{0}'.format(port))
+            # print(e)
             return
 
 
         it = util.Iterator(self.board)
         it.start()
         self.board.add_cmd_handler(pyfirmata.pyfirmata.STRING_DATA, self._messageHandler)
-        self.maxSample=maxSample
         self.data=[]
         self.firstSample=False
         self.lastFreq=0
@@ -154,7 +144,6 @@ def signal_handler(sig, frame):
     global runState
     print('Abort received')
     runState = False
-    # dumper.stop()
 
 def __wait(t , prefix='Wait'):
     """
@@ -173,121 +162,59 @@ def __wait(t , prefix='Wait'):
 
 
 
-def mainFunc():
+def mainFunc(port=''):
 
     signal.signal(signal.SIGINT, signal_handler)
     nb.clearConsole()
-    port=''
-    if nb.isWindows:
-        port = 'COM5'
-    else:
-        port = '/dev/ttyACM1'
 
-    s = Sampler( port , maxSample=1000)
-    # plt.ion()
+    if port == '':
+        if nb.isWindows:
+            port = 'COM5'
+        else:
+            port = '/dev/ttyACM1'
+
+    sampler = Sampler( port )
+    if not sampler.valid:
+        return
+
     loops=1
     while runState:
         loops+=1
 
-        if s.firstSample:
+        if sampler.firstSample:
             nb.clearConsole()
             print('\n\nSlope Sample')
             print('\n')
             print('  {0:<10}{1}'.format('port' , port))
-            print('  {0:<10}{1}'.format('yMin' , s.yMin))
-            print('  {0:<10}{1}'.format('yMax' , s.yMax))
-            print('  {0:<10}{1}'.format('Save in' , s.getRemain()))
+            print('  {0:<10}{1}'.format('yMin' , sampler.yMin))
+            print('  {0:<10}{1}'.format('yMax' , sampler.yMax))
+            print('  {0:<10}{1}'.format('Save in' , sampler.getRemain()))
             print('\n')
-            nb.banner( '{0:.3f}'.format(s.lastFreq))
-            # print( '{0:.2f}'.format(s.lastFreq ))
-        # if loops%120==0:
-        #     print('save')
-        #     nb.saveDict( nb.slopePath+'test.txt' , s.data )
+            nb.banner( '{0:.3f}'.format(sampler.lastFreq))
+
         time.sleep(1)
         pass
 
-    s.stop()
+    sampler.stop()
 
 
 
-
-def plot():
-
-    dList = os.listdir( nb.slopeDataPath )
-    infiles=[]
-    for d in dList:
-        _dir = nb.slopeDataPath + d + '/'
-        fList = os.listdir( _dir )
-
-        for f in fList:
-            fn = _dir+f
-            infiles.append(fn)
-
-    infiles.sort()
-
-    while len(infiles) > 5:
-        infiles.pop(0)
-
-    f,t=[],[]
-    dataSum=[]
-    for fn in infiles:
-        data=None
-        try:
-            retry=30
-            while retry:
-                data = nb.loadDict( fn )
-                if data is not None:
-                    retry=0
-                else:
-                    print('retry read data')
-                    retry -= 1
-                    time.sleep(1)
-        except:pass
-
-        if data is not None:
-            for i,sample in enumerate(data):
-                # if i > 1000: break
-                print( 'collect : {0:.3f}%'.format( 100*((i+1)/len(data))) , end='\r')
-                # f.append( sample['f'])
-                # t.append( nb.getDateObject(sample['t']))
-                dataSum.append( sample )
-            print()
-
-    flt = nb.Filter()
-
-    resData = flt.calcArithmetics(dataSum)
-
-    # fsmooth = flt.smooth( f , k=20)
-    # plt.plot( t , f , marker='.' , label='original' , color = '#000000' , alpha=0.1)
-    # plt.plot( t , fsmooth , marker='.' , label='smoothed 1s' , color='#008ff5' , alpha=0.2)
-
-    # plt.plot( resData['t'] , resData['min'] , marker=',' , label='min' , color='#800000' )
-    # plt.plot( resData['t'] , resData['max'] , marker=',' , label='max' , color='#800000' )
-    plt.plot( resData['t'] , resData['avg'] , marker=',' , label='avg' , color='#a04000' )
-
-    plt.ylim((48,52))
-    plt.legend()
-    plt.show()
-    pass
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-plot'  , dest='plotFunc', required=False , action='store_true',
-                        help='plot test samples')
-    parser.set_defaults(plotFunc=False)
+    # parser.add_argument('-plot'  , dest='plotFunc', required=False , action='store_true',
+    #                     help='plot test samples')
+    # parser.set_defaults(plotFunc=False)
 
     # parser.add_argument('-samples'    , type=float, default=10    , required=False  ,
     #                     help='{0}Sa, samples to be taken'.format( 10 ))
     # parser.add_argument('-until'    , type=str, default=''    , required=False  ,
     #                     help='date &| time yyyy-mm-dd hh-mm')
-    # parser.add_argument('-port'    , type=str, default=''    , required=False  ,
-    #                     help='port')
 
+    parser.add_argument('-port'    , type=str, default=''    , required=False  ,
+                        help='port')
     args = parser.parse_args()
 
-    if args.plotFunc:
-        plot()
-    else:
-        mainFunc()
+    mainFunc( port=args.port )
