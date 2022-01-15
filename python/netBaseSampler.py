@@ -1,84 +1,37 @@
-import os
 import time
-import matplotlib.pylab as plt
-import argparse
-from pyfirmata import Arduino, util
-import pyfirmata
-import netBase as nb
+from netBase import getStamp as nb_getStamp, loadDict as nb_loadDict, saveDict as nb_saveDict
 import threading
-import signal
-import matplotlib.pyplot as plt
 from copy import deepcopy
 
-runState=True
+
+
+
+
+
 
 class BaseSampler:
 
-    def __init__(self, port ):
+    def __init__(self, logPath ):
         self.valid=False
+        self.__logPath=logPath
         self.logTime=time.time()
         print('Init Sampler : ... ' , end='\r')
-        try:
-            self.board = Arduino(port)
-            self.__logTime( 'BoardInit')
-        except Exception as e:
-            nb.logException(e , 'Failed to init Sampler port:{0}'.format(port))
-            # print(e)
-            return
-
-
-        it = util.Iterator(self.board)
-        it.start()
-        self.board.add_cmd_handler(pyfirmata.pyfirmata.STRING_DATA, self._messageHandler)
         self.data=[]
-        self.firstSample=False
-        self.lastFreq=0
-        self.yMin=0
-        self.yMax=0
-        self.__logTime( 'InitDone')
-        self.__last_file=''
-        self.__interval = 2*60
+        self.__interval=2*60
         self.run=False
+        self.runSave=True
+        self.__interval = 2*60
         self.__remain = 0
-        self.makePathName()
-        self.runSave=False
-        self.saveOp=False
+        self.__last_file= ''
+        self.saveOperationRunning=False
 
+        self.__makePathName()
         threading.Thread(target=self.saveTask).start()
         self.valid=True
 
     def __logTime(self , topic=''):
         print('{0:<15}{1:.3f}s'.format(topic , time.time()-self.logTime))
 
-    def _messageHandler(self, *args, **kwargs):
-
-        if not self.firstSample:
-            self.__logTime( 'FirstSample')
-            self.firstSample=True
-
-        #sample=int(util.two_byte_iter_to_str(args))
-        r = util.two_byte_iter_to_str(args)
-
-        # print(r)
-        if 'y' in r:    self.yMin = int(r.replace('y',''))
-        if 'Y' in r:    self.yMax = int(r.replace('Y',''))
-
-
-        if 'x' in r:
-            T = float(r.replace('x',''))/1000000.0
-            f=1/T
-            t = nb.getStamp(precise=True , addMilliseconds=True)
-            self.lastFreq=f
-
-            # while self.saveOp:
-            #     time.sleep(0.1)
-
-            self.data.append(
-                {
-                    'f' : f,
-                    't' : t
-                }
-            )
 
     def stop(self):
         if self.runSave:
@@ -89,11 +42,11 @@ class BaseSampler:
     def getRemain(self):
         return self.__remain
 
-    def makePathName(self):
-        stamp = nb.getStamp()
+    def __makePathName(self):
+        stamp = nb_getStamp()
         fldr = stamp.split(' ')[0]
-        fn = nb.getStamp(hourOnly=True)
-        path = nb.slopeDataPath + fldr + '/' + fn + '.txt'
+        fn = nb_getStamp(hourOnly=True)
+        path = self.__logPath + fldr + '/' + fn + '.txt'
         self.__last_file = path
 
     def saveTask(self):
@@ -106,21 +59,21 @@ class BaseSampler:
                 self.__remain-=1
                 time.sleep(1)
 
-            self.makePathName()
+            self.__makePathName()
 
-            self.saveOp=True
+            self.saveOperationRunning=True
             # self.logTime=time.time()
             self.__saveData()
             print('save samples : {0}'.format(len( self.data )))
             # self.__logTime('save file')
-            self.saveOp=False
+            self.saveOperationRunning=False
 
         pass
 
     def __saveData(self):
         if self.__last_file=='': return
 
-        resData = nb.loadDict( self.__last_file )
+        resData = nb_loadDict( self.__last_file )
 
         if resData is None:
             print('newList')
@@ -134,87 +87,8 @@ class BaseSampler:
         for s in dc:
             resData.append( s )
 
-        nb.saveDict( self.__last_file , resData )
+        nb_saveDict( self.__last_file , resData )
 
 
 
 
-
-def signal_handler(sig, frame):
-    global runState
-    print('Abort received')
-    runState = False
-
-def __wait(t , prefix='Wait'):
-    """
-    Sleeps with console response
-    :param t: time
-    :return:
-    """
-    while t > 0:
-        time.sleep(1)
-        t-=1
-        if prefix != '':
-            print('{1} : {0}'.format(t , prefix) , end='\r')
-
-    if prefix != '':
-        print()
-
-
-
-def mainFunc(port=''):
-
-    signal.signal(signal.SIGINT, signal_handler)
-    nb.clearConsole()
-
-    if port == '':
-        if nb.isWindows:
-            port = 'COM5'
-        else:
-            port = '/dev/ttyACM0'
-
-    sampler = Sampler( port )
-    if not sampler.valid:
-        return
-
-    loops=1
-    while runState:
-        loops+=1
-
-        if sampler.firstSample:
-            nb.clearConsole()
-            print('\n\nSlope Sample')
-            print('\n')
-            print('  {0:<10}{1}'.format('port' , port))
-            print('  {0:<10}{1}'.format('yMin' , sampler.yMin))
-            print('  {0:<10}{1}'.format('yMax' , sampler.yMax))
-            print('  {0:<10}{1}'.format('Save in' , sampler.getRemain()))
-            print('\n')
-            nb.banner( '{0:.3f}'.format(sampler.lastFreq))
-
-        time.sleep(1)
-        pass
-
-    sampler.stop()
-
-
-
-
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-
-    # parser.add_argument('-plot'  , dest='plotFunc', required=False , action='store_true',
-    #                     help='plot test samples')
-    # parser.set_defaults(plotFunc=False)
-
-    # parser.add_argument('-samples'    , type=float, default=10    , required=False  ,
-    #                     help='{0}Sa, samples to be taken'.format( 10 ))
-    # parser.add_argument('-until'    , type=str, default=''    , required=False  ,
-    #                     help='date &| time yyyy-mm-dd hh-mm')
-
-    parser.add_argument('-port'    , type=str, default=''    , required=False  ,
-                        help='port')
-    args = parser.parse_args()
-
-    mainFunc( port=args.port )

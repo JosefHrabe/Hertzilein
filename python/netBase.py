@@ -18,15 +18,34 @@ default_port_raspi = '/dev/ttyACM0'
 default_port_pc    = 'COM3'
 encode = 'utf-8'
 rootPath  = os.getcwd().replace('\\','/').replace('python','')
+
+pathItemData='data/'
+pathItemPacked='packed/'
+pathItemStripped='stripped/'
+pathItemCalced='calced/'
+
+
 logPath   = rootPath + 'logs/'
-logDataPath   = rootPath + 'data/'
+logDataPath   = rootPath + pathItemData
 debugPath = logDataPath + 'debug/'
 plotsPath = rootPath + 'plots/'
 exceptionPath = logPath + 'exceptions/'
 slopePath   = rootPath + 'slope/'
-slopeDataPath   = slopePath + 'data/'
-slopePackedPath   = slopePath + 'packed/'
-slopeStrippedPath   = slopePath + 'stripped/'
+slopeDataPath   = slopePath + pathItemData
+slopePackedPath   = slopePath + pathItemPacked
+slopeStrippedPath   = slopePath + pathItemStripped
+# calcedDataPath   = slopePath + 'calcedData/'
+# calcedTraces   = calcedDataPath + 'traces.txt'
+
+mainTraces = pathItemCalced+'mainTraces.txt'
+
+
+packetTrace = rootPath+'packet.txt'
+scopePath   = rootPath + 'scope/'
+scopeDataPath   = scopePath + pathItemData
+
+
+
 compressFormats= [ 'gz' , 'bz' , 'lzma']
 
 if 'Windows' in platform.system():
@@ -35,6 +54,19 @@ if 'Windows' in platform.system():
 else:
     isWindows = False
     port= default_port_raspi
+
+
+def toPackedPath(s):
+    if pathItemData in s:
+        return s.replace(pathItemData,pathItemPacked)
+
+    return None
+
+def toStrippedPath(s):
+    if pathItemData in s:
+        return s.replace(pathItemData,pathItemStripped)
+
+    return None
 
 def calcSamples( d ):
     try:
@@ -96,18 +128,24 @@ def toCompressFileName(fn, compress):
         dest = '.'.join( dump[:-1])
         dest += '.'+compress
 
-    return dest
+        return dest
+
+    return None
 
 
-def packFile( fn ):
+def packFile( fn , dataPath , packedPath):
 
     dest = toCompressFileName( fn , 'gz')
-    dest = dest.replace( slopeDataPath , slopePackedPath )
-    print('Pack : {0}'.format(fn))
+    #dest = dest.replace( slopeDataPath , slopePackedPath )
+    dest = dest.replace( dataPath , packedPath )
     if not os.path.exists( dest ):
+        print('{0:>8} : {1}'.format('Pack',fn))
         data = loadDict(fn)
         prepareFilePath(dest)
         cj.dump( data , dest )
+    # else:
+    #     print('{0:>8} : {1}'.format('Exists',fn))
+
 
 
 def saveDict( f , d , indent=1 , compress='' , override=True):

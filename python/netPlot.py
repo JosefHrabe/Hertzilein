@@ -64,72 +64,70 @@ def  makePhaseData( yList ):
 
 
 
-def plot():
+def plot(  ):
 
 
     fig = plt.figure(num=None , figsize=(imgSizeX*0.6,imgSizeY*0.6) , dpi=150 )
-    dList = os.listdir( nb.slopeStrippedPath )
-    infiles=[]
-    for d in dList:
-        _dir = nb.slopeStrippedPath + d + '/'
-        fList = os.listdir( _dir )
-
-        for f in fList:
-            fn = _dir+f
-            infiles.append(fn)
-
-    infiles.sort()
-
-    sumData={ 'min':[] , 'max':[], 'avg':[]  , 't':[], 'to':[]  }
-
-    for i,fn in enumerate(infiles):
-        print('Load: {0}'.format(fn) , end='\r')
-        # if 1 > 5: continue
-        data = nb.loadDict( fn )
-        sumData['min'].extend( data['min'] )
-        sumData['max'].extend( data['max'] )
-        sumData['avg'].extend( data['avg'] )
-        sumData['t'].extend( data['t'] )
-    print()
-
     ax1=plt.subplot()
-
-    m_x , m_y = makeMinuteData( sumData['t'] , sumData['avg'])
-    ax1.plot( m_x , m_y ,
-              label='Average (1min)', marker='', linestyle='-',
-              color='#000000' , alpha = 0.9 , linewidth=0.7 , zorder=3)
-
-
     ax2 = ax1.twinx()
-    p_y, sp_y = makePhaseData( m_y )
-    ax2.plot( m_x , p_y ,
-              label='Phase (1min)', marker='', linestyle='-',
-              color='#0000FF' , alpha = 0.2 , linewidth=1 , zorder=3)
-    ax2.plot( m_x , sp_y ,
-              label='Phase (1min)', marker='', linestyle='-',
-              color='#0000FF' , alpha = 0.5 , linewidth=1 , zorder=3)
-    ax2.set_ylim((-2,6))
-
-
-    mean= sum(sumData['avg'])/len(sumData['avg'])
     mean_50 = [ 50.0,50.0 ]
-    mean_y = [ mean,mean ]
     mean_x = [ nb.getDateObject( nb.getStamp(offset=-1e8) ) ,nb.getDateObject( nb.getStamp(offset=+1e8) ) ]
 
-    for i in range( len(sumData['t'])):
-        print( 'Convert: {0:.2f}%'.format( ((i+1)/len(sumData['t']))*100 ) , end='\r' )
-        sumData['to'].append( nb.getDateObject(sumData['t'][i]) )
+    itemSets=[
+        { 'path':nb.slopePath , 'fColor':'#000000' , 'phaseColor':'#0000ff' },
+        { 'path':nb.scopePath , 'fColor':'#ff4000' , 'phaseColor':'#ff4000' },
+    ]
 
-    ax1.plot( sumData['to'] , sumData['avg'] ,
-              label='Average (1s)', marker='', linestyle='-',
-              color='#008000' , alpha = 0.4 , linewidth=0.7 , zorder=2)
+    for itemSet in itemSets:
+        mainTraces = itemSet['path'] + nb.mainTraces
+        traces = nb.loadDict( mainTraces )
+
+        sumData = traces['sumData']
+        m_x = traces['minuteData']['t']
+        m_y = traces['minuteData']['m']
+        p_y = traces['minuteData']['ph']
+        sp_y = traces['minuteData']['ph_sum']
+
+        for i,t in enumerate(m_x):
+            m_x[i]=nb.getDateObject(t)
 
 
-    ax1.plot(mean_x, mean_y, label='Measured Mean {0:.3f}Hz'.format(mean), marker='', linestyle=':',
-             color='#008ff5' , linewidth=1 , zorder=2)
+        # m_x , m_y = makeMinuteData( sumData['t'] , sumData['avg'])
+        ax1.plot(m_x, m_y,
+                       label='Average (1min)', marker='', linestyle='-',
+                       color=itemSet['fColor'], alpha = 0.9, linewidth=0.7, zorder=3)
 
+
+        # p_y, sp_y = makePhaseData( m_y )
+        ax2.plot(m_x, p_y,
+                       label='Phase (1min)', marker='', linestyle='-',
+                       color=itemSet['phaseColor'], alpha = 0.2, linewidth=1, zorder=3)
+        ax2.plot(m_x, sp_y,
+                       label='Phase (1min)', marker='', linestyle='-',
+                       color=itemSet['phaseColor'], alpha = 0.5, linewidth=1, zorder=3)
+        ax2.set_ylim((-2,6))
+
+
+        mean= sum(sumData['avg'])/len(sumData['avg'])
+        mean_y = [ mean,mean ]
+
+        # for i in range( len(sumData['t'])):
+        #     print( 'Convert: {0:.2f}%'.format( ((i+1)/len(sumData['t']))*100 ) , end='\r' )
+        #     sumData['to'].append( nb.getDateObject(sumData['t'][i]) )
+        #
+        # ax1.plot(sumData['to'], sumData['avg'],
+        #                label='Average (1s)', marker='', linestyle='-',
+        #                color='#008000', alpha = 0.4, linewidth=0.7, zorder=2)
+
+
+        # mean of item
+        ax1.plot(mean_x, mean_y, label='Measured Mean {0:.3f}Hz'.format(mean), marker='', linestyle=':',
+                       color='#008ff5', linewidth=1, zorder=2)
+
+
+    # 50Hz line
     ax1.plot(mean_x, mean_50, label='Setpoint {0:.3f}Hz'.format(50), marker='', linestyle=':',
-             color='#ff0000' , linewidth=1 , zorder=2)
+                   color='#ff0000', linewidth=1, zorder=2)
 
     if cfg_showLegend:
         #plot esctions
@@ -138,59 +136,59 @@ def plot():
         mean_base = 50.0
         dMin = [ mean_base-dev,mean_base-dev ]
         dMax = [ mean_base+dev,mean_base+dev ]
-        ax1.plot(mean_x, dMin, marker='', linestyle=':', linewidth=1 , color='#00aa00' , label='Regular Area')
-        ax1.plot(mean_x, dMax, marker='', linestyle=':', linewidth=1 , color='#00aa00')
+        ax1.plot(mean_x, dMin, marker='', linestyle=':', linewidth=1, color='#00aa00', label='Regular Area')
+        ax1.plot(mean_x, dMax, marker='', linestyle=':', linewidth=1, color='#00aa00')
         ax1.fill_between( mean_x , dMin , dMax , color='#00a00040')
 
         #area with short distortion w/o prim. regulation
         dev = 0.8
         dMin = [ mean_base-dev,mean_base-dev ]
         dMax = [ mean_base+dev,mean_base+dev ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-.', linewidth=1 , color='#00aa00' , label='Short-term disruptions\nw/o regulation')
-        ax1.plot(mean_x, dMax, marker='', linestyle='-.', linewidth=1 , color='#00aa00')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-.', linewidth=1, color='#00aa00', label='Short-term disruptions\nw/o regulation')
+        ax1.plot(mean_x, dMax, marker='', linestyle='-.', linewidth=1, color='#00aa00')
         ax1.fill_between( mean_x , dMin , dMax , color='#00a00020')
 
         # prim reg.
         dMin = [ mean_base-0.2,mean_base-0.2 ]
         dMax = [ mean_base-0.8,mean_base-0.8 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#606060' , alpha=0.5, label='Activation 1st power reserve\nt<10s')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#606060', alpha=0.5, label='Activation 1st power reserve\nt<10s')
         ax1.fill_between( mean_x , dMin , dMax , color='#ffff00' , alpha=0.1)
 
         # Abwurf Speicherpumpen
         dMin = [ mean_base-0.8,mean_base-0.8 ]
         dMax = [ mean_base-1.0,mean_base-1.0 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#606060' , alpha=0.6, label='Dump storage pumps\nwithout delay')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#606060', alpha=0.6, label='Dump storage pumps\nwithout delay')
         ax1.fill_between( mean_x , dMin , dMax , color='#ffff00' , alpha=0.2)
 
         # Lastabwurf Stufe 1
         dMin = [ mean_base-1.0,mean_base-1.0 ]
         dMax = [ mean_base-1.2,mean_base-1.2 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ffff00' , alpha=0.7, label='Load shedding Level 1\n~12.5% load')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#ffff00', alpha=0.7, label='Load shedding Level 1\n~12.5% load')
         ax1.fill_between( mean_x , dMin , dMax , color='#ffff00' , alpha=0.3)
 
         # Lastabwurf Stufe 2
         dMin = [ mean_base-1.2,mean_base-1.2 ]
         dMax = [ mean_base-1.4,mean_base-1.4 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff8000' , alpha=0.7, label='Load shedding Level 2\n~25.0% load')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#ff8000', alpha=0.7, label='Load shedding Level 2\n~25.0% load')
         ax1.fill_between( mean_x , dMin , dMax , color='#ff8000' , alpha=0.4)
 
         # Lastabwurf Stufe 3
         dMin = [ mean_base-1.4,mean_base-1.4 ]
         dMax = [ mean_base-1.6,mean_base-1.6 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff4000' , alpha=0.7, label='Load shedding Level 3\n~37.5% load')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#ff4000', alpha=0.7, label='Load shedding Level 3\n~37.5% load')
         ax1.fill_between( mean_x , dMin , dMax , color='#ff4000' , alpha=0.5)
 
         # Lastabwurf Stufe 4
         dMin = [ mean_base-1.6,mean_base-1.6 ]
         dMax = [ mean_base-2.5,mean_base-2.5 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#ff0000' , alpha=0.7, label='Load shedding Level 4\n50% load minimum')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#ff0000', alpha=0.7, label='Load shedding Level 4\n50% load minimum')
         ax1.fill_between( mean_x , dMin , dMax , color='#ff0000' , alpha=0.6)
 
 
         # Blackout
         dMin = [ mean_base-2.5,mean_base-2.5 ]
         dMax = [ 0,0 ]
-        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1 , color='#000000' , alpha=1.0, label='Separation of\npower plants')
+        ax1.plot(mean_x, dMin, marker='', linestyle='-', linewidth=1, color='#000000', alpha=1.0, label='Separation of\npower plants')
         ax1.fill_between( mean_x , dMin , dMax , color='#000000' , alpha=0.6)
 
     ax1.grid()
@@ -321,4 +319,4 @@ if __name__ == '__main__':
     if args.plot3d:
         plot3d()
     else:
-        plot()
+        plot(  )

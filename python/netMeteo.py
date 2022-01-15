@@ -21,7 +21,7 @@ def meteo():
 
     # Plot line chart including average, minimum and maximum temperature
     # data.plot(y=['tavg', 'prcp', 'wspd' , 'wdir' , 'snow' , 'tsun'])
-    data.plot(y=['temp', 'prcp', 'wspd' , 'wdir' , 'snow' , 'tsun'])
+    data.calcTraces(y=['temp', 'prcp', 'wspd' , 'wdir' , 'snow' , 'tsun'])
     plt.show()
 
     # 'date',

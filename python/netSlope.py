@@ -171,7 +171,7 @@ def mainFunc(port=''):
         if nb.isWindows:
             port = 'COM5'
         else:
-            port = '/dev/ttyACM1'
+            port = '/dev/ttyACM0'
 
     sampler = Sampler( port )
     if not sampler.valid:

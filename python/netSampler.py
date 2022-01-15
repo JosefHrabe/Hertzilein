@@ -14,8 +14,9 @@ runState=True
 
 class Sampler:
 
-    def __init__(self, port ):
+    def __init__(self, port , maxData):
         self.valid=False
+        self.maxData=maxData
         self.logTime=time.time()
         print('Init Sampler : ... ' , end='\r')
         try:
@@ -30,192 +31,75 @@ class Sampler:
         it = util.Iterator(self.board)
         it.start()
         self.board.add_cmd_handler(pyfirmata.pyfirmata.STRING_DATA, self._messageHandler)
-        self.data=[]
-        self.firstSample=False
-        self.lastFreq=0
-        self.yMin=0
-        self.yMax=0
-        self.__logTime( 'InitDone')
-        self.__last_file=''
-        self.__interval = 2*60
-        self.run=False
-        self.__remain = 0
-        self.makePathName()
-        self.runSave=False
-        self.saveOp=False
-
-        threading.Thread(target=self.saveTask).start()
         self.valid=True
+        self.logging=True
+        self.xData=[]
+        self.yData=[]
+        self.lastX=0
+        self.ignoreCount=4
+        self.xSum=0
+        self.packet=0
+        self.samples=0
 
     def __logTime(self , topic=''):
         print('{0:<15}{1:.3f}s'.format(topic , time.time()-self.logTime))
 
     def _messageHandler(self, *args, **kwargs):
 
-        if not self.firstSample:
-            self.__logTime( 'FirstSample')
-            self.firstSample=True
-
+        if not self.logging : return
         #sample=int(util.two_byte_iter_to_str(args))
         r = util.two_byte_iter_to_str(args)
+        # print(r)
 
-        print(r)
-        # if 'y' in r:    self.yMin = int(r.replace('y',''))
-        # if 'Y' in r:    self.yMax = int(r.replace('Y',''))
-        #
-        #
-        # if 'x' in r:
-        #     T = float(r.replace('x',''))/1000000.0
-        #     f=1/T
-        #     t = nb.getStamp(precise=True , addMilliseconds=True)
-        #     self.lastFreq=f
-        #
-        #     # while self.saveOp:
-        #     #     time.sleep(0.1)
-        #
-        #     self.data.append(
-        #         {
-        #             'f' : f,
-        #             't' : t
-        #         }
-        #     )
+        if '---' in r:
+            self.packet+=1
+            self.samples=0
+            return
 
-    def stop(self):
-        if self.runSave:
-            print('Save Backup')
-            self.__saveData()
-        self.runSave=False
+        if 'end' in r:
+            self.logging=False
+            print()
+            return
 
-    def getRemain(self):
-        return self.__remain
+        self.samples+=1
+        dump = r.split(';')
+        self.xSum += int(dump[1])
 
-    def makePathName(self):
-        stamp = nb.getStamp()
-        fldr = stamp.split(' ')[0]
-        fn = nb.getStamp(hourOnly=True)
-        path = nb.slopeDataPath + fldr + '/' + fn + '.txt'
-        self.__last_file = path
+        self.xData.append(self.xSum)
+        self.yData.append(int(dump[0]))
 
-    def saveTask(self):
-        self.runSave=True
-        while True:
-            pass
-            # self.__remain=self.__interval
-            # while self.__remain > 0:
-            #     if not self.runSave : return
-            #
-            #     self.__remain-=1
-            #     time.sleep(1)
-            #
-            # self.makePathName()
-            #
-            # self.saveOp=True
-            # # self.logTime=time.time()
-            # self.__saveData()
-            # print('save samples : {0}'.format(len( self.data )))
-            # # self.__logTime('save file')
-            # self.saveOp=False
-
-        pass
-
-    def __saveData(self):
-        if self.__last_file=='': return
-
-        resData = nb.loadDict( self.__last_file )
-
-        if resData is None:
-            print('newList')
-            resData=[]
-
-        self.logTime=time.time()
-        dc = deepcopy( self.data)
-        self.__logTime('dc')
-        self.data.clear()
-
-        for s in dc:
-            resData.append( s )
-
-        nb.saveDict( self.__last_file , resData )
-
-
-
-
-
-def signal_handler(sig, frame):
-    global runState
-    print('Abort received')
-    runState = False
-
-def __wait(t , prefix='Wait'):
-    """
-    Sleeps with console response
-    :param t: time
-    :return:
-    """
-    while t > 0:
-        time.sleep(1)
-        t-=1
-        if prefix != '':
-            print('{1} : {0}'.format(t , prefix) , end='\r')
-
-    if prefix != '':
-        print()
+        print( 'Packet: {0:>5} :: {1:<5}'.format(self.packet , self.samples) , end='\r')
 
 
 
 def mainFunc(port=''):
 
-    signal.signal(signal.SIGINT, signal_handler)
     nb.clearConsole()
 
     if port == '':
         if nb.isWindows:
-            port = 'COM5'
+            port = 'COM3'
         else:
             port = '/dev/ttyACM1'
 
-    sampler = Sampler( port )
+    sampler = Sampler( port , 1000 )
     if not sampler.valid:
         return
 
-    loops=1
-    while runState:
-        loops+=1
-
-        if sampler.firstSample:
-            nb.clearConsole()
-            print('\n\nSlope Sample')
-            print('\n')
-            print('  {0:<10}{1}'.format('port' , port))
-            print('  {0:<10}{1}'.format('yMin' , sampler.yMin))
-            print('  {0:<10}{1}'.format('yMax' , sampler.yMax))
-            print('  {0:<10}{1}'.format('Save in' , sampler.getRemain()))
-            print('\n')
-            nb.banner( '{0:.3f}'.format(sampler.lastFreq))
-
+    while sampler.logging:
+        # nb.clearConsole()
+        # print( 'Packet: {0:>5} :: {1}'.format(sampler.packet , sampler.samples))
         time.sleep(1)
         pass
 
-    sampler.stop()
 
+    nb.saveDict( nb.packetTrace , {   'x_us':sampler.xData, 'adc':sampler.yData    })
+    plt.plot( sampler.xData , sampler.yData , marker='.')
+    plt.show()
 
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
 
-    # parser.add_argument('-plot'  , dest='plotFunc', required=False , action='store_true',
-    #                     help='plot test samples')
-    # parser.set_defaults(plotFunc=False)
-
-    # parser.add_argument('-samples'    , type=float, default=10    , required=False  ,
-    #                     help='{0}Sa, samples to be taken'.format( 10 ))
-    # parser.add_argument('-until'    , type=str, default=''    , required=False  ,
-    #                     help='date &| time yyyy-mm-dd hh-mm')
-
-    parser.add_argument('-port'    , type=str, default=''    , required=False  ,
-                        help='port')
-    args = parser.parse_args()
-
-    mainFunc( port=args.port )
+    mainFunc( )

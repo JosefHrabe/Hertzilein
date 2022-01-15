@@ -28,46 +28,19 @@ based on european criterias
 - receives period data from Arduino and puts them into buffer
 - saving data occures every 2 minutes
 - every day gets new directory, every hour gets new file - to prevent amount of possible lost data
-### netPacker.py
-- run as cronjob or manually
-- runs through available data  and packs them into own directory
-### netStripper.py
-- run as cronjob or manually
-- runs through packed data strips em into own directory
-- by default all period data within one second are stripped down into a complex sample
- which includes timestamp, minimum, maximum and average data
+
+### netScope.py
+- Sampler with Rohde&Schwarz RTC1002
+- Sampling ans storage same as Slope Sampler
+- using line trigger and trigger counter
+- communication via VISA, SCPI port and TCPIP
+
 ### netPlot.py
 - plots frequency trace over last 24 hours, scrolling and scaling if possible afterwards
+- plots both samplers, slope and scope
 
 ### netBase.py
 - common used functions for e.g. loading|saving or filtering
-
-## netFFT
-- deprecated
-- sampler based on analog data - use AnalogSampler.ino
-
-
-# Directories
-## your repo 
-storage path of your repository
-### python
-python files
-### ino  
-arduino files
-### data
-ignored, stores data of FFT logger, deprecated
-### logs
-ignored, hold logfiles for e.g. exceptions
-### plots
-ignored, default storage for plot files
-### slope
-ignored stores slope data
-#### data
-unpacked original captured data
-#### packed
-packed data
-#### stripped
-stripped data
 
 
 
