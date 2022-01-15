@@ -1,5 +1,7 @@
 .idea/
+*.png
 /data
 /plots
 /slope
 /logs
+/scope
