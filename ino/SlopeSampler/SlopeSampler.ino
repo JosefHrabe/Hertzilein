@@ -12,8 +12,8 @@ unsigned long period=0;
 bool slopeDirection=true;
 unsigned int slopeCount=0;
 
-int thrRising  = 600;
-int thrFalling = 400;
+int thrRising  = 500;
+int thrFalling = 300;
 unsigned int ignorePeriods=4;
 char wave = 't';
 
