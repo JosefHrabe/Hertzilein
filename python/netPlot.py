@@ -14,57 +14,9 @@ imgSizeY=9
 cfg_plot=False
 
 
-def  makeMinuteData( xList , yList , dtObj=True):
-
-    data={}
-
-    for i,x in enumerate(xList) :
-        _x = '-'.join(x.split('-')[:-1])
-        if _x not in data:
-            data[_x]={ 'sum':0 , 'cnt':0}
-
-        data[_x]['sum']+=yList[i]
-        data[_x]['cnt']+=1
-
-    __x,__y=[],[]
-    for sample in data:
-        __x.append( sample+'-30' )
-        __y.append( data[sample]['sum'] / data[sample]['cnt'] )
 
 
-    for i,x in enumerate(__x):
-        if dtObj:
-            __x[i] = nb.getDateObject(x)
-        else:
-            __x[i] = x
-
-    pass
-    return __x , __y
-
-
-def  makePhaseData( yList ):
-
-    __y=[]
-    __sum=[]
-    sum = 0
-
-    for i,y in enumerate(yList):
-        if i==0:
-            __y.append(0)
-            __sum.append(0)
-        else:
-            _y=yList[i-1]
-
-            phase=((_y/y)*360)-360
-            sum += phase
-            __y.append( phase )
-            __sum.append(sum)
-            pass
-    return __y, __sum
-
-
-
-def plot(  ):
+def plot( fCount=10 ):
 
 
     fig = plt.figure(num=None , figsize=(imgSizeX*0.6,imgSizeY*0.6) , dpi=150 )
@@ -79,26 +31,39 @@ def plot(  ):
     ]
 
     for itemSet in itemSets:
-        mainTraces = itemSet['path'] + nb.mainTraces
-        traces = nb.loadDict( mainTraces )
 
-        sumData = traces['sumData']
-        m_x = traces['minuteData']['t']
-        m_y = traces['minuteData']['m']
-        p_y = traces['minuteData']['ph']
-        sp_y = traces['minuteData']['ph_sum']
+        _p = itemSet['path'] + nb.pathItemTraces
+
+        infiles = nb.fileList( _p)
+
+        infiles = infiles[ -fCount:]
+
+        m_x, m_y, p_y, sp_y  = [], [], [], []
+        for fn in infiles:
+            data = nb.loadDict( fn )
+            m_x.extend(  data['minuteData']['t']      )
+            m_y.extend(  data['minuteData']['m']      )
+            p_y.extend(  data['minuteData']['ph']     )
+            sp_y.extend( data['minuteData']['ph_sum'] )
+
+        # mainTraces = itemSet['path'] + nb.mainTraces
+        # traces = nb.loadDict( mainTraces )
+
+        # sumData = traces['sumData']
+        # m_x = traces['minuteData']['t']
+        # m_y = traces['minuteData']['m']
+        # p_y = traces['minuteData']['ph']
+        # sp_y = traces['minuteData']['ph_sum']
 
         for i,t in enumerate(m_x):
             m_x[i]=nb.getDateObject(t)
 
 
-        # m_x , m_y = makeMinuteData( sumData['t'] , sumData['avg'])
         ax1.plot(m_x, m_y,
                        label='Average (1min)', marker='', linestyle='-',
                        color=itemSet['fColor'], alpha = 0.9, linewidth=0.7, zorder=3)
 
 
-        # p_y, sp_y = makePhaseData( m_y )
         ax2.plot(m_x, p_y,
                        label='Phase (1min)', marker='', linestyle='-',
                        color=itemSet['phaseColor'], alpha = 0.2, linewidth=1, zorder=3)
@@ -108,7 +73,8 @@ def plot(  ):
         ax2.set_ylim((-2,6))
 
 
-        mean= sum(sumData['avg'])/len(sumData['avg'])
+        #mean= sum(sumData['avg'])/len(sumData['avg'])
+        mean= sum( m_y )/len( m_y )
         mean_y = [ mean,mean ]
 
         # for i in range( len(sumData['t'])):
@@ -236,75 +202,70 @@ def _cvtTimeToSecOfDay( s ):
     t=h+m+s
     return t
 
-def _make3DData( indata ):
-    # data=[]
-    # for _x in range(20):
-    #     data.append([])
-    #     for _y in range(20):
-    #         data[_x].append( random.randint(40,50))
-
-    __x , __y , __z =[],[],[]
-    _x=-1
-    _stamp=''
-    for i,stamp in enumerate( indata['t']):
-        dump = stamp.split(' ')
-
-        if _stamp != dump[0]:
-            _stamp = dump[0]
-            _x+=1
-        _t=_cvtTimeToSecOfDay(dump[1])
-
-        __x.append(_x)
-        __y.append(_t)
-        __z.append( indata['avg'][i] )
-
-    pass
-    return __x , __y , __z
 
 
 
-def plot3d():
+def plot3d( fCount=10 ):
+
+    x,y,z=[],[],[]
+    infiles= nb.fileList(nb.slopeTracesPath)
+
+    infiles = infiles[ -fCount : ]
+
+    for f in infiles:
+        print('Add : ' + f )
+        data = nb.loadDict( f )
+
+        for i,t in enumerate( data['minuteData']['t']):
+            _x , _y = nb.dataToXY( t )
+
+            x.append( _x )
+            y.append( _y )
+            z.append( data['minuteData']['m'][i] )
 
 
-    dList = os.listdir( nb.slopeStrippedPath )
-    infiles=[]
-    for d in dList:
-        _dir = nb.slopeStrippedPath + d + '/'
-        fList = os.listdir( _dir )
-
-        for f in fList:
-            fn = _dir+f
-            infiles.append(fn)
-
-    infiles.sort()
-
-    sumData={ 'min':[] , 'max':[], 'avg':[]  , 't':[], 'to':[]  }
-
-    for i,fn in enumerate(infiles):
-        print('Load: {0}'.format(fn) , end='\r')
-        # if 1 > 5: continue
-        data = nb.loadDict( fn )
-        sumData['min'].extend( data['min'] )
-        sumData['max'].extend( data['max'] )
-        sumData['avg'].extend( data['avg'] )
-        sumData['t'].extend( data['t'] )
-    print()
-
-    m_x , m_y=makeMinuteData( sumData['t'] , sumData['avg'] , dtObj=False)
-    del sumData
-    sumData={ 't':m_x, 'avg':m_y  }
-
-    x,y,z=_make3DData( sumData )
-
+    clr='#008ff5'
     cmap = plt.cm.nipy_spectral
     norm = colors.Normalize(vmin=min(z), vmax=max(z))
     clr=cmap(norm(z))
-
+#
     fig = plt.figure(num=None , figsize=(imgSizeX*0.6,imgSizeY*0.6) , dpi=150 )
     ax = plt.subplot(111, projection='3d')
 
     ax.scatter( x, y, z, marker='.' , color=clr)
     plt.show()
+
+    pass
+
+
+
+def plotDate( dates=[] ):
+
+    allFiles = []
+    dirList = os.listdir( nb.slopePackedPath )
+    for d in dirList :
+        fList = os.listdir( nb.slopePackedPath + d )
+
+        for f in fList:
+            fn = nb.slopePackedPath+d+'/'+f
+
+            for flt in dates:
+                if flt in fn:
+                    allFiles.append( fn)
+
+    allFiles.sort()
+    _f=[]
+    _t=[]
+    for af in allFiles:
+        print(af)
+        data = nb.loadDict( fn )
+        for d in data:
+            _f.append(d['f'])
+            # _t.append( nb.getDateObject(d['t']))
+
+    plt.plot(  _f )
+    plt.show()
+
 
 if __name__ == '__main__':
 
@@ -312,11 +273,17 @@ if __name__ == '__main__':
 
     parser.add_argument('-3d'  , dest='plot3d', required=False , action='store_true',
                         help='plot 3D')
-    parser.set_defaults(plot3d=False)
+
+    parser.add_argument('-days'  , type=int , default=7 , required=False)
 
     args = parser.parse_args()
 
+    days = args.days
+    fCount = days * 24
+
     if args.plot3d:
-        plot3d()
+        plot3d( fCount=fCount )
     else:
-        plot(  )
+        plot( fCount=fCount )
+
+    pass

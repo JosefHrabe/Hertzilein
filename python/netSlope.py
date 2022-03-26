@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 
 runState=True
+initTime = time.time()
+bootTime = 0.0
+exitTime = 0.0
 
 class Sampler:
 
@@ -142,6 +145,8 @@ class Sampler:
 
 def signal_handler(sig, frame):
     global runState
+    global exitTime
+    exitTime=time.time()
     print('Abort received')
     runState = False
 
@@ -164,9 +169,15 @@ def __wait(t , prefix='Wait'):
 
 def mainFunc(port=''):
 
+    global bootTime
+    global runState
+
     signal.signal(signal.SIGINT, signal_handler)
     nb.clearConsole()
-
+    jobMode=False
+    runTime = (60.0*60.0 -( 8 + 5 +5))
+    duration =0
+    time_start = time.time()
     if port == '':
         if nb.isWindows:
             port = 'COM5'
@@ -179,21 +190,42 @@ def mainFunc(port=''):
 
     loops=1
     while runState:
+
         loops+=1
+
+
+        if sampler.firstSample and bootTime == 0.0:
+            bootTime = time.time()-initTime
 
         if sampler.firstSample:
             nb.clearConsole()
             print('\n\nSlope Sample')
             print('\n')
-            print('  {0:<10}{1}'.format('port' , port))
-            print('  {0:<10}{1}'.format('yMin' , sampler.yMin))
-            print('  {0:<10}{1}'.format('yMax' , sampler.yMax))
-            print('  {0:<10}{1}'.format('Save in' , sampler.getRemain()))
-            print('\n')
-            nb.banner( '{0:.3f}'.format(sampler.lastFreq))
+            if not jobMode:
+                print('  {0:<10}{1}'.format('port' , port))
+                print('  {0:<10}{1}'.format('yMin' , sampler.yMin))
+                print('  {0:<10}{1}'.format('yMax' , sampler.yMax))
+                print('  {0:<10}{1}'.format('Save in' , sampler.getRemain()))
+                print('  {0:<10}{1}'.format('boot' , '{0:.2f}s'.format(bootTime)))
+            print('  {0:<10}{1}'.format('runTime' , '{0:.2f}s'.format( int(runTime))))
+            print('  {0:<10}{1}'.format('duration' , '{0:.2f}s'.format( int(duration))))
 
-        time.sleep(1)
+            if not jobMode:
+                print('\n')
+                nb.banner( '{0:.3f}'.format(sampler.lastFreq))
+
+        if jobMode:
+            time.sleep(30)
+        else:
+            time.sleep(1)
+
         pass
+
+        time_now = time.time()
+        duration = time_now-time_start
+
+        if jobMode and abs(duration)> runTime:
+            runState = False
 
     sampler.stop()
 
@@ -218,3 +250,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     mainFunc( port=args.port )
+
+    print('  {0:<10}{1}'.format('exit in' , '{0:.2f}s'.format( time.time()-exitTime )))

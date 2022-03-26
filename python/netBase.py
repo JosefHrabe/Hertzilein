@@ -23,6 +23,7 @@ pathItemData='data/'
 pathItemPacked='packed/'
 pathItemStripped='stripped/'
 pathItemCalced='calced/'
+pathItemTraces='traces/'
 
 
 logPath   = rootPath + 'logs/'
@@ -34,6 +35,7 @@ slopePath   = rootPath + 'slope/'
 slopeDataPath   = slopePath + pathItemData
 slopePackedPath   = slopePath + pathItemPacked
 slopeStrippedPath   = slopePath + pathItemStripped
+slopeTracesPath   = slopePath + pathItemTraces
 # calcedDataPath   = slopePath + 'calcedData/'
 # calcedTraces   = calcedDataPath + 'traces.txt'
 
@@ -213,7 +215,11 @@ def banner( s ):
 
     print( _s )
 
-
+def dataToXY( s ):
+    day_of_year = datetime.datetime.strptime( s, "%Y-%m-%d %H-%M-%S").timetuple().tm_yday
+    _h , _m , _s = s.split(' ')[1].split('-')
+    second_in_day = int(_h)*60*60 + int(_m)*60 + int(_s)
+    return day_of_year,second_in_day
 
 def iPolSpline(data_in, factor=10):
     size=len(data_in)
@@ -232,6 +238,18 @@ def iPolLinear(data_in, factor=10):
     yNew=x.tolist()
     return yNew
 
+
+def fileList( path ):
+    infiles=[]
+
+    dList = os.listdir( path )
+
+    for _d in dList:
+        fList = os.listdir( path + _d )
+        for f in fList:
+            fn = path + _d + '/' + f
+            infiles.append(fn)
+    return infiles
 
 class Filter:
     def __init__( self , fg=1,fs=1 , FIR_kMax=50):
@@ -328,7 +346,7 @@ class Filter:
 
         return outData
 
-    def calcArithmetics( self , data , asTimeObject=True):
+    def calcArithmetics( self , data , asTimeObject=True , _min=30.0 , _max=70.0):
 
         currentSample={ 't':'','min':100,'max':0,'sum':0    }
 
@@ -339,7 +357,7 @@ class Filter:
 
             current_f = sample['f']
 
-            if 30 < current_f < 70:
+            if _min < current_f < _max:
 
                 stamp = sample['t'].split('.')[0]
                 if stamp != currentSample['t']:
@@ -361,6 +379,8 @@ class Filter:
 
                     currentSample['sum'] += current_f
                     currentSample['cnt'] += 1
+            else:
+                print('\nfailed : {0}\n'.format(current_f) )
         print()
 
         if currentSample['t'] !='' :

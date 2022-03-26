@@ -9,7 +9,7 @@ from copy import deepcopy
 
 
 
-class BaseSampler:
+class BaseLogger:
 
     def __init__(self, logPath ):
         self.valid=False
@@ -20,6 +20,7 @@ class BaseSampler:
         self.__interval=2*60
         self.run=False
         self.runSave=True
+        self.__saveTaskInstances=0
         self.__interval = 2*60
         self.__remain = 0
         self.__last_file= ''
@@ -50,6 +51,12 @@ class BaseSampler:
         self.__last_file = path
 
     def saveTask(self):
+        if self.__saveTaskInstances !=0:
+            print( 'SaveTask already running')
+            raise Exception('SaveTask already running')
+            return
+
+        self.__saveTaskInstances+=1
         self.runSave=True
         while True:
             self.__remain=self.__interval

@@ -1,10 +1,11 @@
 import os
 import netBase as nb
 import compress_json as cj
+import argparse
 
+def strip( itemPath ,_min , _max , recalc ):
 
-def strip( itemPath ):
-
+    print('strip')
     packedPath = itemPath + nb.pathItemPacked
     strippedPath = itemPath + nb.pathItemStripped
 
@@ -24,11 +25,12 @@ def strip( itemPath ):
 
         dest = fn.replace( packedPath , strippedPath )
 
-        if not os.path.exists( dest ):
+        if (not os.path.exists( dest )) or recalc:
+            
             print('{0:>8} : {1}'.format('Strip',fn))
             data = nb.loadDict( fn )
             flt = nb.Filter()
-            resData = flt.calcArithmetics(data , asTimeObject=False)
+            resData = flt.calcArithmetics(data , asTimeObject=False , _min=_min , _max=_max)
             cj.dump( resData , dest )
             # nb.saveDict( dest+'.txt' , resData)
             pass
@@ -37,6 +39,7 @@ def strip( itemPath ):
 
 def pack( itemPath ):
 
+    print('Pack')
     dataPath = itemPath+ nb.pathItemData
     packedPath = itemPath+nb.pathItemPacked
 
@@ -113,10 +116,12 @@ def makePhaseData( yList ):
 
     return __y, __sum
 
-def calcTraces( itemPath ):
+def calcTraces( itemPath='' , ozzfest_correction=0.0 , force=False ):
+
+    if itemPath=='': return
 
     strippedPath = itemPath+nb.pathItemStripped
-    outFile = itemPath + nb.mainTraces
+    #outFile = itemPath + nb.mainTraces
 
     dList = os.listdir( strippedPath )
     infiles=[]
@@ -136,33 +141,70 @@ def calcTraces( itemPath ):
         print('Load: {0}'.format(fn) , end='\r')
         # if 1 > 5: continue
         data = nb.loadDict( fn )
-        sumData['min'].extend( data['min'] )
-        sumData['max'].extend( data['max'] )
-        sumData['avg'].extend( data['avg'] )
-        sumData['t'].extend( data['t'] )
+
+        outFile = fn.replace( nb.pathItemStripped , nb.pathItemTraces )
+
+        if not force and os.path.exists( outFile ): continue
+
+        if ozzfest_correction != 0.0:
+            for i in range(len( data['min'])):
+                print('Ozzfest: {0:.2f}%'.format( 100*((i+1)/(len( data['min']))) ) , end='\r')
+                data['min'][i] += ozzfest_correction
+                data['max'][i] += ozzfest_correction
+                data['avg'][i] += ozzfest_correction
+            print()
+
+        m_x , m_y = makeMinuteData( data['t'] , data['avg'] , dtObj=False )
+        p_y, sp_y = makePhaseData( m_y )
+
+        traces={
+            'sumData' : sumData,
+            'minuteData':{
+                't':m_x,
+                'm':m_y,
+                'ph':p_y,
+                'ph_sum':sp_y,
+            }
+        }
+
+        # outFile = itemPath + nb.mainTraces
+        nb.saveDict( outFile , traces ,  compress='gz')
     print()
 
-    m_x , m_y = makeMinuteData( sumData['t'] , sumData['avg'] , dtObj=False )
-    p_y, sp_y = makePhaseData( m_y )
 
-    traces={
-        'sumData' : sumData,
-        'minuteData':{
-            't':m_x,
-            'm':m_y,
-            'ph':p_y,
-            'ph_sum':sp_y,
-        }
-    }
 
-    nb.saveDict( outFile , traces )
 
 
 
 if __name__ == '__main__':
-    sets=[ nb.slopePath , nb.scopePath ]
-    for dataset in sets:
-        print('{0:>8} : {1}'.format('PP',dataset))
-        pack( dataset )
-        strip( dataset )
-        calcTraces( dataset )
+
+    _min,_max = 48.0 , 52.0
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-min'    , type=float, default=_min    , required=False  ,
+                        help='minimum value for adding sample to tracedata')
+    parser.add_argument('-max'    , type=float, default=_max    , required=False  ,
+                        help='maximum value for adding sample to tracedata')
+    parser.add_argument('-recalc'  , dest='recalc', required=False , action='store_true',
+                        help='recalc stripped data')
+    parser.set_defaults(recalc=False)
+
+    parser.add_argument('-force'  , dest='force', required=False , action='store_true',
+                        help='force calc data')
+    parser.set_defaults(force=False)
+
+    args = parser.parse_args()
+    recalc = args.recalc
+
+    sets=[      (nb.slopePath , 0.02315659363035383 )
+            ,   (nb.scopePath , 0.0)
+           ]
+
+    for itempath, ozzfest in sets:
+        print('{0:>8} : {1}'.format('PP', itempath))
+        pack(itempath)
+        strip(itempath, _min , _max , recalc )
+        calcTraces(itempath, ozzfest , args.force)
+
+
+

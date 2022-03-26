@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 
 import pyvisa as vs
-from netBaseSampler import BaseSampler
+from netBaseLogger import BaseLogger
 
 
 runState=True
 
-class ScopeSampler(BaseSampler):
+class ScopeSampler(BaseLogger):
 
     def __init__(self , ip , logPath, interval=1.0):
         super( ScopeSampler , self).__init__( logPath=logPath )

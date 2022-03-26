@@ -66,8 +66,6 @@ def __wait(t , prefix='Wait'):
     if prefix != '':
         print()
 
-
-
 def _calcStd( data ):
 
     __min = min(data)
@@ -153,10 +151,6 @@ class Dumper:
             resData.append( s )
 
         nb.saveDict( self.__last_file , resData )
-
-
-
-
 
 
 iPolFactor_t=20
